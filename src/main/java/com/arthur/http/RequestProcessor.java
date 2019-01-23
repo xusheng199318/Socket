@@ -1,8 +1,10 @@
 package com.arthur.http;
 
 import java.io.IOException;
+import java.io.Writer;
 import java.net.Socket;
 import java.io.File;
+import java.util.Date;
 import java.util.logging.Logger;
 
 /**
@@ -41,6 +43,17 @@ public class RequestProcessor implements Runnable {
 
     @Override
     public void run() {
+
+    }
+
+    private void sendHeader(Writer writer, String responseCode,
+                            String contentType, int length) throws IOException {
+        writer.write(responseCode + "\r\n");
+        writer.write("Date: " + new Date() + "\r\n");
+        writer.write("Server: JHttp 2.0\r\n");
+        writer.write("Content-length: " + length + "\r\n");
+        writer.write("Content-type: " + contentType + "\r\n\r\n");
+        writer.flush();
 
     }
 }

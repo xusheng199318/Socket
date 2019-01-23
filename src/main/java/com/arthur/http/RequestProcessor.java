@@ -1,10 +1,11 @@
 package com.arthur.http;
 
-import java.io.IOException;
-import java.io.Writer;
+import java.io.*;
 import java.net.Socket;
-import java.io.File;
+import java.net.URLConnection;
+import java.nio.file.Files;
 import java.util.Date;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -43,7 +44,95 @@ public class RequestProcessor implements Runnable {
 
     @Override
     public void run() {
+        String root = rootDirectory.getPath();
+        try {
+            OutputStream raw = new BufferedOutputStream(
+                    request.getOutputStream());
+            Writer writer = new OutputStreamWriter(raw);
 
+            Reader reader = new InputStreamReader(
+                            new BufferedInputStream(
+                            request.getInputStream()), "US-ASCII");
+
+            StringBuilder requestLine = new StringBuilder();
+            while (true) {
+                int c = reader.read();
+                if (c == '\r' || c == '\n') {
+                    break;
+                }
+                requestLine.append((char) c);
+            }
+
+            String get = requestLine.toString();
+
+            logger.info(request.getRemoteSocketAddress() + " " + get);
+            String[] tokens = get.split("\\s+");
+            String method = tokens[0];
+            String version = "";
+            if ("GET".equals(method)) {
+                String fileName = tokens[1];
+                if (fileName.endsWith("/")) {
+                    fileName += indexFileName;
+                }
+                String contentType = URLConnection.getFileNameMap().getContentTypeFor(fileName);
+                if (tokens.length > 2) {
+                    version = tokens[2];
+                }
+
+                File theFile = new File(rootDirectory, fileName.substring(1, fileName.length()));
+
+                if (theFile.canRead() && theFile.getCanonicalPath().startsWith(root)) {
+                    byte[] theData = Files.readAllBytes(theFile.toPath());
+                    if (version.startsWith("HTTP/")) {
+                        sendHeader(writer, "HTTP/1.0 200 OK", contentType, theData.length);
+                    }
+
+                    //发送文件，可能是一个图像或其他二进制数据，
+                    //所以要使用底层输出流，而不是Writer
+                    raw.write(theData);
+                    raw.flush();
+                } else {
+                    String body = new StringBuilder("<HTML>\r\n")
+                            .append("<HEAD><TITLE>File Not Found</TITLE>\r\n")
+                            .append("</HEAD>\r\n")
+                            .append("<BODY>\r\n")
+                            .append("<H1>HTTP Error 404：File Not Found</H1>\r\n")
+                            .append("</BODY></HTML>\r\n")
+                            .toString();
+                    if (version.startsWith("HTTP/")) {
+                        sendHeader(writer, "HTTP/1.0 404 File Not Found",
+                                "text/html; charset=utf-8", body.length());
+                    }
+                    writer.write(body);
+                    writer.flush();
+                }
+            } else {//不是GET方法
+                String body = new StringBuilder("<HTML>\r\n")
+                        .append("<HEAD><TITLE>Not Implemented</TITLE>\r\n")
+                        .append("</HEAD>\r\n")
+                        .append("<BODY>\r\n")
+                        .append("<H1>HTTP Error 501：Not Implemented</H1>\r\n")
+                        .append("</BODY></HTML>\r\n")
+                        .toString();
+                if (version.startsWith("HTTP/")) {
+                    sendHeader(writer, "HTTP/1.0 501 Not Implemented",
+                            "text/html; charset=utf-8", body.length());
+                }
+                writer.write(body);
+                writer.flush();
+            }
+
+        } catch (IOException e) {
+            logger.log(Level.WARNING,
+                    "Error talking to " + request.getRemoteSocketAddress(), e);
+        } finally {
+            try {
+                request.close();
+            } catch (IOException e) {
+                logger.log(Level.WARNING,
+                        "Error to close this socket", e);
+            }
+        }
     }
 
     private void sendHeader(Writer writer, String responseCode,

@@ -33,7 +33,7 @@ public class SingleFileHttpServer {
         String header = "HTTP/1.0 200 OK\r\n" +
                 "Server: OneFile 2.0\r\n" +
                 "Content-length: " + content.length +"\r\n" +
-                "Content-type: " + mimeType + "; chatset = " + encoding + "\r\n\r\n";
+                "Content-type: " + mimeType + "; charset = " + encoding + "\r\n\r\n";
         this.header = header.getBytes(Charset.forName("US-ASCII"));
     }
 
@@ -88,6 +88,7 @@ public class SingleFileHttpServer {
                     request.append((char) c);
                 }
 
+                System.out.println(request);
                 if (request.toString().indexOf("HTTP/") != -1) {
                     os.write(header);
                 }
@@ -124,7 +125,7 @@ public class SingleFileHttpServer {
         }*/
 
         try {
-            String c = "localhost";
+            String c = "D:\\ideaWorkspace2.5\\Socket\\src\\main\\resources\\test.txt";
             Path path = Paths.get(c);
             byte[] content = Files.readAllBytes(path);
 
@@ -136,6 +137,7 @@ public class SingleFileHttpServer {
             System.out.println("Usage: java SingleFileHttpServer filename port encoding");
         } catch (IOException ex) {
             logger.severe(ex.getMessage());
+            ex.printStackTrace();
         }
     }
 }

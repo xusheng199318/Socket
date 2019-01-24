@@ -43,10 +43,23 @@ public class JHttp {
 
     public void start() {
         ExecutorService threadPool = Executors.newFixedThreadPool(NUM_THREADS);
-        try (ServerSocket server = new ServerSocket(port)) {
-            Socket request = server.accept();
-            Runnable requestProcesser = new RequestProcessor(request,rootDirectory, INDEX_FILE);
-            threadPool.submit(requestProcesser);
+        while (true) {
+            try (ServerSocket server = new ServerSocket(port)) {
+                Socket request = server.accept();
+                Runnable requestProcesser = new RequestProcessor(request,rootDirectory, INDEX_FILE);
+                threadPool.submit(requestProcesser);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        String path = "D:\\ideaWorkspace2.5\\Socket\\src\\main\\WebRoot";
+        File rootDirectory = new File(path);
+        try {
+            JHttp httpServer = new JHttp(rootDirectory, 80);
+            httpServer.start();
         } catch (IOException e) {
             e.printStackTrace();
         }
